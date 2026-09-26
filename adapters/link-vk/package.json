@@ -1,0 +1,15 @@
+{
+  "name": "@link-lang/adapter-vk",
+  "version": "0.1.0",
+  "description": "VK Bots API adapter for Link language",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
