@@ -35,7 +35,7 @@ npm install
 npm run build
 ```
 
-For a per-user CLI launcher that adds `link` to `PATH`, see the [installation guide](docs/installation.md). The standalone site is available at [link website]((https://linklang.samp.date/)).
+For a per-user CLI launcher that adds `link` to `PATH`, see the [installation guide](docs/installation.md). The standalone site is available at [[link website]((https://linklang.samp.date/)).](https://linklang.samp.date/)
 
 ### 2. Run Example Program
 
