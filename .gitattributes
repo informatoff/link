@@ -1,0 +1,10 @@
+# GitHub Linguist language overrides
+# Associates .lk files with the Link language
+*.lk linguist-detectable=true
+*.lk linguist-language=Link
+
+# Mark documentation and websites so they don't dilute repository language statistics
+docs/** linguist-documentation
+website/** linguist-documentation
+site/** linguist-documentation
+examples/** linguist-detectable=true
