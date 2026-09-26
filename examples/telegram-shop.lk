@@ -1,0 +1,179 @@
+// Telegram shop example: catalog, cart, checkout, and order notifications.
+import "telegram"
+
+channel tg = link telegram(env("TG_TOKEN", "8665332276:AAHa8PPeoD7viQogXHylbTb_Kt12xzJ3pSY"))
+
+fn cart_total(cart) {
+    return cart.coffee * 850 + cart.tea * 450 + cart.honey * 620
+}
+
+fn cart_summary(cart) {
+    return "*Корзина*\nКофе: " + str(cart.coffee) + " x 850 ₽\nЧай: " + str(cart.tea) + " x 450 ₽\nМёд: " + str(cart.honey) + " x 620 ₽\n\nИтого: *" + str(cart_total(cart)) + " ₽*"
+}
+
+fn cart_keyboard() {
+    return {
+        inline_keyboard: [
+            [{text: "− Кофе", callback_data: "remove:coffee"}, {text: "+ Кофе", callback_data: "add:coffee"}],
+            [{text: "− Чай", callback_data: "remove:tea"}, {text: "+ Чай", callback_data: "add:tea"}],
+            [{text: "− Мёд", callback_data: "remove:honey"}, {text: "+ Мёд", callback_data: "add:honey"}],
+            [{text: "Очистить", callback_data: "clear_cart"}, {text: "Оформить", callback_data: "checkout"}],
+            [{text: "Каталог", callback_data: "catalog"}]
+        ]
+    }
+}
+
+listen tg {
+    route "/start" {
+        send(ctx.chat, "*Добро пожаловать в Link Market!*\nВыбери действие:", {
+            parse_mode: "Markdown",
+            reply_markup: {
+                inline_keyboard: [
+                    [{text: "Каталог", callback_data: "catalog"}],
+                    [{text: "Корзина", callback_data: "cart"}],
+                    [{text: "Помощь", callback_data: "help"}]
+                ]
+            }
+        })
+    }
+
+    on message(msg) {
+        flow cart_key = "shop:cart:" + msg.authorId
+        flow cart = db.get(cart_key) ?? {coffee: 0, tea: 0, honey: 0}
+        flow checkout_key = "shop:checkout:" + msg.authorId
+        flow checkout = db.get(checkout_key) ?? {step: "", address: ""}
+
+        if msg.text == "cancel" {
+            checkout.step = ""
+            checkout.address = ""
+            db.set(checkout_key, checkout)
+            send(msg.chatId, "Оформление отменено. Корзина сохранена.", {
+                reply_markup: cart_keyboard()
+            })
+        } elif checkout.step == "address" {
+            checkout.address = msg.text
+            checkout.step = "phone"
+            db.set(checkout_key, checkout)
+            send(msg.chatId, "Теперь отправь номер телефона для связи.", {
+                reply_markup: {
+                    inline_keyboard: [[{text: "Отмена", callback_data: "cancel"}]]
+                }
+            })
+        } elif checkout.step == "phone" {
+            let order_id = str(time.timestamp())
+            let total = cart_total(cart)
+            db.set("shop:order:" + order_id, {
+                id: order_id,
+                customer_id: msg.authorId,
+                phone: msg.text,
+                address: checkout.address,
+                total: total,
+                items: {coffee: cart.coffee, tea: cart.tea, honey: cart.honey}
+            })
+            db.set("shop:last_order:" + msg.authorId, order_id)
+
+            let admin_chat = env("SHOP_ADMIN_CHAT_ID", "")
+            if len(admin_chat) > 0 {
+                send(admin_chat, "Новый заказ #" + order_id + "\nПокупатель: " + msg.authorId + "\nТелефон: " + msg.text + "\nАдрес: " + checkout.address + "\nСумма: " + str(total) + " ₽")
+            }
+
+            cart = {coffee: 0, tea: 0, honey: 0}
+            db.set(cart_key, cart)
+            checkout.step = ""
+            checkout.address = ""
+            db.set(checkout_key, checkout)
+            send(msg.chatId, "Заказ #" + order_id + " принят! Сумма: " + str(total) + " ₽. Менеджер свяжется с тобой для подтверждения и оплаты.")
+        } elif msg.text == "catalog" {
+            send(msg.chatId, "*Каталог*\nКофе арабика, 250 г — 850 ₽\nЧай зелёный, 100 г — 450 ₽\nМёд цветочный, 500 г — 620 ₽", {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [{text: "Добавить кофе · 850 ₽", callback_data: "add:coffee"}],
+                        [{text: "Добавить чай · 450 ₽", callback_data: "add:tea"}],
+                        [{text: "Добавить мёд · 620 ₽", callback_data: "add:honey"}],
+                        [{text: "Открыть корзину", callback_data: "cart"}]
+                    ]
+                }
+            })
+        } elif msg.text == "add:coffee" {
+            cart.coffee += 1
+            db.set(cart_key, cart)
+            send(msg.chatId, "Кофе добавлен.\n\n" + cart_summary(cart), {
+                parse_mode: "Markdown",
+                reply_markup: cart_keyboard()
+            })
+        } elif msg.text == "add:tea" {
+            cart.tea += 1
+            db.set(cart_key, cart)
+            send(msg.chatId, "Чай добавлен.\n\n" + cart_summary(cart), {
+                parse_mode: "Markdown",
+                reply_markup: cart_keyboard()
+            })
+        } elif msg.text == "add:honey" {
+            cart.honey += 1
+            db.set(cart_key, cart)
+            send(msg.chatId, "Мёд добавлен.\n\n" + cart_summary(cart), {
+                parse_mode: "Markdown",
+                reply_markup: cart_keyboard()
+            })
+        } elif msg.text == "remove:coffee" {
+            if cart.coffee > 0 { cart.coffee -= 1 }
+            db.set(cart_key, cart)
+            send(msg.chatId, cart_summary(cart), {parse_mode: "Markdown", reply_markup: cart_keyboard()})
+        } elif msg.text == "remove:tea" {
+            if cart.tea > 0 { cart.tea -= 1 }
+            db.set(cart_key, cart)
+            send(msg.chatId, cart_summary(cart), {parse_mode: "Markdown", reply_markup: cart_keyboard()})
+        } elif msg.text == "remove:honey" {
+            if cart.honey > 0 { cart.honey -= 1 }
+            db.set(cart_key, cart)
+            send(msg.chatId, cart_summary(cart), {parse_mode: "Markdown", reply_markup: cart_keyboard()})
+        } elif msg.text == "clear_cart" {
+            cart = {coffee: 0, tea: 0, honey: 0}
+            db.set(cart_key, cart)
+            send(msg.chatId, "Корзина очищена.\n\n" + cart_summary(cart), {
+                parse_mode: "Markdown",
+                reply_markup: cart_keyboard()
+            })
+        } elif msg.text == "cart" {
+            send(msg.chatId, cart_summary(cart), {
+                parse_mode: "Markdown",
+                reply_markup: cart_keyboard()
+            })
+        } elif msg.text == "checkout" {
+            if cart_total(cart) == 0 {
+                send(msg.chatId, "Корзина пуста. Сначала выбери товары в каталоге.", {
+                    reply_markup: {
+                        inline_keyboard: [[{text: "Открыть каталог", callback_data: "catalog"}]]
+                    }
+                })
+            } else {
+                checkout.step = "address"
+                checkout.address = ""
+                db.set(checkout_key, checkout)
+                send(msg.chatId, "Адрес доставки? Отправь город, улицу, дом и квартиру одним сообщением.", {
+                    reply_markup: {
+                        inline_keyboard: [[{text: "Отмена", callback_data: "cancel"}]]
+                    }
+                })
+            }
+        } elif msg.text == "help" {
+            send(msg.chatId, "*Как заказать*\n1. Открой каталог и добавь товары.\n2. Проверь корзину и нажми «Оформить».\n3. Отправь адрес и телефон.\nМенеджер подтвердит заказ и сообщит способ оплаты.", {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [[{text: "Каталог", callback_data: "catalog"}, {text: "Корзина", callback_data: "cart"}]]
+                }
+            })
+        } else {
+            send(msg.chatId, "Выбери действие в меню или открой каталог командой /start.", {
+                reply_markup: {
+                    inline_keyboard: [[{text: "Каталог", callback_data: "catalog"}, {text: "Корзина", callback_data: "cart"}]]
+                }
+            })
+        }
+    }
+}
+
+hook on_start {
+    log.info("Link Market запущен")
+}

@@ -1,0 +1,134 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Link",
+  "scopeName": "source.link",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#operators" },
+    { "include": "#duration" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#constants" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.link",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.link",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.link",
+          "match": "\\b(if|else|elif|for|in|while|loop|break|continue|return|try|catch|finally|throw|wait|require)\\b"
+        },
+        {
+          "name": "keyword.other.link-spec.link",
+          "match": "\\b(link|listen|on|send|hook|route|emit|event|channel|flow|retry)\\b"
+        },
+        {
+          "name": "storage.type.link",
+          "match": "\\b(let|const|fn|struct|class|import|export|async|await)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.custom.retry.link",
+          "match": "~>"
+        },
+        {
+          "name": "keyword.operator.custom.pipe.link",
+          "match": "\\|>"
+        },
+        {
+          "name": "keyword.operator.arrow.link",
+          "match": "=>"
+        },
+        {
+          "name": "keyword.operator.comparison.link",
+          "match": "(==|!=|<=|>=|<|>)"
+        },
+        {
+          "name": "keyword.operator.assignment.link",
+          "match": "(\\+=|-=|\\*=|/=|\\=)"
+        },
+        {
+          "name": "keyword.operator.arithmetic.link",
+          "match": "(\\+|\\-|\\*|/|%|\\*\\*)"
+        }
+      ]
+    },
+    "duration": {
+      "patterns": [
+        {
+          "name": "constant.numeric.duration.link",
+          "match": "\\b[0-9]+(\\.[0-9]+)?(ms|s|m|h|d|w)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.link",
+          "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.link",
+          "match": "\\b(true|false|null)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.link",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.link",
+              "match": "\\\\."
+            },
+            {
+              "name": "meta.embedded.line.link",
+              "begin": "\\{",
+              "end": "\\}",
+              "captures": {
+                "0": { "name": "punctuation.section.embedded.link" }
+              },
+              "patterns": [
+                { "include": "source.link" }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.link",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.link",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

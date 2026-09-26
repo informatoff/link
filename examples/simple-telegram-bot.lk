@@ -1,0 +1,49 @@
+// simple-telegram-bot.lk — Эхо-бот на Telegram для Link
+import "telegram"
+
+channel tg = link telegram(env("TG_TOKEN", "8665332276:AAHa8PPeoD7viQogXHylbTb_Kt12xzJ3pSY"))
+
+listen tg {
+    route "/start" {
+        send(ctx.chat, "*Привет!* Я бот на Link.\nВыбери действие:", {
+            parse_mode: "Markdown",
+            reply_markup: {
+                keyboard: [[{text: "📊 Статистика"}, {text: "ℹ️ Помощь"}]],
+                resize_keyboard: true,
+                is_persistent: true
+            }
+        })
+        send(ctx.chat, "Или нажми inline-кнопку:", {
+            reply_markup: {
+                inline_keyboard: [[
+                    {text: "Статистика", callback_data: "stats"},
+                    {text: "Помощь", callback_data: "help"}
+                ]]
+            }
+        })
+    }
+
+    on message(msg) {
+        flow user_stats = db.get(msg.author_id) ?? {count: 0}
+        if !msg.isCallback {
+            user_stats.count += 1
+            db.set(msg.author_id, user_stats)
+        }
+
+        if msg.text == "stats" || msg.text == "📊 Статистика" {
+            send(msg.chatId, "*Статистика*\nСообщений: " + str(user_stats.count), {
+                parse_mode: "Markdown"
+            })
+        } elif msg.text == "help" || msg.text == "ℹ️ Помощь" {
+            send(msg.chatId, "*Помощь*\nОтправь сообщение, и я повторю его. Используй кнопки для статистики и справки.", {
+                parse_mode: "Markdown"
+            })
+        } else {
+            send(msg.chatId, "Эхо: " + msg.text + " (Сообщений: " + str(user_stats.count) + ")")
+        }
+    }
+}
+
+hook on_start {
+    log.info("Telegram бот запущен!")
+}

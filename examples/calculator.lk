@@ -1,0 +1,30 @@
+// Simple arithmetic calculator in Link.
+
+fn calculate(left, operator, right) {
+    if operator == "+" {
+        return left + right
+    } elif operator == "-" {
+        return left - right
+    } elif operator == "*" {
+        return left * right
+    } elif operator == "/" {
+        if right == 0 {
+            return "Error: division by zero"
+        }
+        return left / right
+    } elif operator == "%" {
+        if right == 0 {
+            return "Error: division by zero"
+        }
+        return left % right
+    }
+
+    return "Error: unsupported operator {operator}"
+}
+
+let left = float(input("First number: "))
+let operator = input("Operation (+, -, *, /, %): ")
+let right = float(input("Second number: "))
+let result = calculate(left, operator, right)
+
+print("{left} {operator} {right} = {result}")

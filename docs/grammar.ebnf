@@ -1,0 +1,202 @@
+(*
+  Link Language Grammar — EBNF Specification
+  Version 0.1.0
+
+  Notation:
+    rule    = ...           (* production rule *)
+    |                       (* alternation *)
+    [ ... ]                 (* optional *)
+    { ... }                 (* zero or more *)
+    ( ... )                 (* grouping *)
+    "..."                   (* terminal string *)
+    ?...?                   (* special sequence / regex *)
+*)
+
+(* ─── Top-level ─────────────────────────────────────────────────────────────── *)
+
+program         = { statement | newline } EOF ;
+
+statement       = import_decl
+                | export_decl
+                | var_decl
+                | fn_decl
+                | struct_decl
+                | class_decl
+                | event_decl
+                | channel_decl
+                | listen_stmt
+                | on_stmt
+                | route_stmt
+                | hook_stmt
+                | emit_stmt
+                | wait_stmt
+                | if_stmt
+                | for_stmt
+                | while_stmt
+                | loop_stmt
+                | try_stmt
+                | return_stmt
+                | break_stmt
+                | continue_stmt
+                | throw_stmt
+                | expr_stmt
+                ;
+
+block           = "{" { statement | newline } "}" ;
+newline         = "\n" | ";" ;
+
+(* ─── Imports & Exports ─────────────────────────────────────────────────────── *)
+
+import_decl     = "import" string_lit [ "as" IDENTIFIER ] ;
+export_decl     = "export" ( fn_decl | var_decl | struct_decl | class_decl ) ;
+
+(* ─── Variable declarations ─────────────────────────────────────────────────── *)
+
+var_decl        = ( "let" | "const" | "flow" ) IDENTIFIER [ "=" expression ] ;
+
+(* ─── Functions ─────────────────────────────────────────────────────────────── *)
+
+fn_decl         = [ "async" ] "fn" IDENTIFIER "(" [ param_list ] ")" block ;
+param_list      = param { "," param } ;
+param           = IDENTIFIER [ "=" expression ] ;
+
+lambda          = "(" [ param_list ] ")" "=>" ( expression | block )
+                | IDENTIFIER "=>" ( expression | block )
+                ;
+
+(* ─── Structs & Classes ─────────────────────────────────────────────────────── *)
+
+struct_decl     = "struct" IDENTIFIER "{" { struct_field } "}" ;
+struct_field    = IDENTIFIER [ ":" IDENTIFIER ] [ "=" expression ] newline ;
+
+class_decl      = "class" IDENTIFIER [ "extends" IDENTIFIER ] "{" { class_member } "}" ;
+class_member    = fn_decl | var_decl ;
+
+(* ─── Link-specific declarations ─────────────────────────────────────────────── *)
+
+event_decl      = "event" IDENTIFIER ;
+
+channel_decl    = "channel" IDENTIFIER "=" "link" IDENTIFIER "(" expression ")" ;
+
+listen_stmt     = "listen" identifier_list block ;
+identifier_list = IDENTIFIER { "," IDENTIFIER } ;
+
+on_stmt         = "on" IDENTIFIER "(" [ param_list ] ")" ( "=>" expression | block ) ;
+
+route_stmt      = "route" string_lit block ;
+route_block     = { route_body_stmt | statement | newline } ;
+route_body_stmt = require_stmt ;
+require_stmt    = "require" IDENTIFIER ":" expression ;
+
+emit_stmt       = "emit" IDENTIFIER "(" [ arg_list ] ")" ;
+
+hook_stmt       = "hook" IDENTIFIER [ "(" [ param_list ] ")" ] block ;
+
+wait_stmt       = "wait" duration_lit ;
+
+(* ─── Control flow ───────────────────────────────────────────────────────────── *)
+
+if_stmt         = "if" expression block
+                  { "elif" expression block }
+                  [ "else" block ]
+                  ;
+
+for_stmt        = "for" IDENTIFIER "in" expression block ;
+
+while_stmt      = "while" expression block ;
+
+loop_stmt       = "loop" block ;
+
+break_stmt      = "break" ;
+continue_stmt   = "continue" ;
+return_stmt     = "return" [ expression ] ;
+throw_stmt      = "throw" expression ;
+
+(* ─── Error handling ─────────────────────────────────────────────────────────── *)
+
+try_stmt        = "try" block
+                  [ "catch" "(" IDENTIFIER ")" block ]
+                  [ "finally" block ]
+                  ;
+
+(* ─── Expressions (Pratt / precedence climbing) ─────────────────────────────── *)
+
+expr_stmt       = expression ;
+
+expression      = assignment ;
+
+assignment      = ( IDENTIFIER | member_expr ) ( "=" | "+=" | "-=" | "*=" | "/=" ) expression
+                | pipe_expr
+                ;
+
+pipe_expr       = retry_expr { "|>" IDENTIFIER } ;
+
+retry_expr      = await_expr [ "~>" "retry" "(" INTEGER [ "," retry_opts ] ")" ] ;
+retry_opts      = retry_opt { "," retry_opt } ;
+retry_opt       = IDENTIFIER ":" ( expression | duration_lit ) ;
+
+await_expr      = [ "await" ] ternary_expr ;
+
+ternary_expr    = logical_or [ "?" expression ":" expression ] ;
+
+logical_or      = logical_and { "||" logical_and } ;
+logical_and     = equality    { "&&" equality    } ;
+equality        = comparison  { ( "==" | "!=" ) comparison } ;
+comparison      = additive    { ( "<" | ">" | "<=" | ">=" ) additive } ;
+additive        = multiplicative { ( "+" | "-" ) multiplicative } ;
+multiplicative  = unary      { ( "*" | "/" | "%" ) unary } ;
+power           = unary      { "**" unary } ;
+unary           = ( "!" | "-" ) unary | call_expr ;
+call_expr       = primary { call_suffix } ;
+
+call_suffix     = "(" [ arg_list ] ")"
+                | "[" expression "]"
+                | "." IDENTIFIER
+                | "?." IDENTIFIER
+                ;
+
+arg_list        = arg { "," arg } ;
+arg             = [ IDENTIFIER ":" ] expression ;
+
+(* ─── Primary expressions ────────────────────────────────────────────────────── *)
+
+primary         = INTEGER
+                | FLOAT
+                | duration_lit
+                | string_lit
+                | template_lit
+                | bool_lit
+                | "null"
+                | IDENTIFIER
+                | array_lit
+                | dict_lit
+                | lambda
+                | "(" expression ")"
+                | "new" IDENTIFIER "(" [ arg_list ] ")"
+                ;
+
+(* ─── Literals ───────────────────────────────────────────────────────────────── *)
+
+integer_lit     = ?[0-9]+? ;
+float_lit       = ?[0-9]+\.[0-9]+? ;
+duration_lit    = ?[0-9]+(\.[0-9]+)?(ms|s|m|h|d|w)? ;
+string_lit      = '"' { char_no_interp } '"'
+                | "'" { char } "'"
+                ;
+template_lit    = '"' { char | "{" expression "}" } '"' ;
+bool_lit        = "true" | "false" ;
+array_lit       = "[" [ expression { "," expression } ] "]" ;
+dict_lit        = "{" [ dict_entry { "," dict_entry } ] "}" ;
+dict_entry      = ( IDENTIFIER | string_lit ) ":" expression ;
+
+(* ─── Terminals ──────────────────────────────────────────────────────────────── *)
+
+IDENTIFIER      = ?[a-zA-Z_][a-zA-Z0-9_]*? ;
+INTEGER         = ?[0-9]+? ;
+FLOAT           = ?[0-9]+\.[0-9]+? ;
+STRING          = ?\"[^\"]*\"? | ?'[^']*'? ;
+
+(* ─── Comments ───────────────────────────────────────────────────────────────── *)
+
+line_comment    = "//" { any_char_except_newline } newline ;
+block_comment   = "/*" { any_char } "*/" ;

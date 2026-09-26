@@ -1,0 +1,10 @@
+{
+  "iconDefinitions": {
+    "_link_file": {
+      "iconPath": "./images/link-file.png"
+    }
+  },
+  "fileExtensions": {
+    "lk": "_link_file"
+  }
+}

@@ -1,0 +1,31 @@
+// multi-platform-bot.lk — Бот, работающий одновременно в Telegram, Discord и VK!
+import "telegram"
+import "discord"
+import "vk"
+
+channel tg = link telegram(env("TG_TOKEN", "mock_tg_token"))
+channel dc = link discord(env("DC_TOKEN", "mock_dc_token"))
+channel vk = link vk(env("VK_TOKEN", "mock_vk_token"))
+
+// ЕДИНЫЙ обработчик для 3 платформ одновременно!
+listen tg, dc, vk {
+    route "/start" {
+        send(ctx.chat, "Привет! Я работаю сразу на 3 платформах (Link Engine) 🚀")
+    }
+
+    route "/weather {city}" {
+        let data = net.get("https://api.weather.com/{city}") ~> retry(3, delay: 500ms)
+        send(ctx.chat, "Погода в {city}: {data.temp}°C")
+    }
+
+    on message(msg) {
+        flow user = db.get(msg.author_id) ?? {msg_count: 0}
+        user.msg_count += 1
+        db.set(msg.author_id, user)
+        log.info("Сообщение с " + msg.platform + ": " + msg.text)
+    }
+}
+
+hook on_start {
+    log.info("Мультиплатформенный бот успешно стартовал на Telegram, Discord и VK!")
+}

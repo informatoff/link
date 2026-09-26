@@ -1,0 +1,64 @@
+{
+  "Route Handler": {
+    "prefix": "route",
+    "body": [
+      "route \"${1:/start}\" {",
+      "    ${2:send(ctx.chat, \"${3:Hello!}\")}",
+      "}"
+    ],
+    "description": "Create a bot command route handler"
+  },
+  "Event Listener": {
+    "prefix": "on",
+    "body": [
+      "on ${1:message}(${2:msg}) {",
+      "    ${3:send(msg.chat, \"${4:Received!}\")}",
+      "}"
+    ],
+    "description": "Create an event listener"
+  },
+  "Lifecycle Hook": {
+    "prefix": "hook",
+    "body": [
+      "hook ${1:on_start} {",
+      "    ${2:log.info(\"Bot started!\")}",
+      "}"
+    ],
+    "description": "Create a lifecycle hook"
+  },
+  "Listen Block": {
+    "prefix": "listen",
+    "body": [
+      "listen ${1:tg} {",
+      "    route \"${2:/start}\" {",
+      "        send(ctx.chat, \"${3:Welcome!}\")",
+      "    }",
+      "}"
+    ],
+    "description": "Create a channel listen block"
+  },
+  "Full Bot Template": {
+    "prefix": "bot-template",
+    "body": [
+      "import \"telegram\"",
+      "",
+      "channel bot = link telegram(env(\"TG_TOKEN\"))",
+      "",
+      "listen bot {",
+      "    route \"/start\" {",
+      "        send(ctx.chat, \"Привет! Я бот на Link 🚀\")",
+      "    }",
+      "",
+      "    on message(msg) {",
+      "        flow user = db.get(msg.author_id)",
+      "        send(msg.chat_id, \"Эхо: \" + msg.text)",
+      "    }",
+      "}",
+      "",
+      "hook on_start {",
+      "    log.info(\"Бот запущен!\")",
+      "}"
+    ],
+    "description": "Generate a full Link bot template"
+  }
+}

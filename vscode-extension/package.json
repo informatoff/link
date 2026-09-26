@@ -1,0 +1,90 @@
+{
+  "name": "link-lang",
+  "displayName": "Link Language",
+  "description": "Language support for Link (syntax highlighting, LSP autocompletion, diagnostics, snippets, and icon theme)",
+  "version": "0.2.0",
+  "publisher": "link-lang",
+  "icon": "./images/link_icon_128.png",
+  "activationEvents": [
+    "onLanguage:link",
+    "onCommand:link.runFile",
+    "onCommand:link.newProject"
+  ],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Themes"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "link",
+        "aliases": ["Link", "link"],
+        "extensions": [".lk"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./images/link-file.svg",
+          "dark": "./images/link-file.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "link",
+        "scopeName": "source.link",
+        "path": "./syntaxes/link.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "link",
+        "path": "./snippets/link.json"
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "link-icons",
+        "label": "Link Icons",
+        "path": "./link-icon-theme.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "link.runFile",
+        "title": "Link: Run File",
+        "icon": "$(play)"
+      },
+      {
+        "command": "link.newProject",
+        "title": "Link: New Bot Project"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "link.runFile",
+          "when": "editorLangId == link || resourceExtname == .lk",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=out/extension.js",
+    "watch": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=out/extension.js --watch"
+  },
+  "dependencies": {
+    "@link-lang/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.4.0"
+  }
+}

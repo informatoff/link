@@ -1,0 +1,51 @@
+// hello-world.lk — первая программа на языке Link
+// Демонстрирует базовый синтаксис языка
+
+// Переменные
+let name = "World"
+let version = 1
+let pi = 3.14
+
+// Строковая интерполяция
+print("Hello, {name}! Link v{version}")
+
+// Duration literals
+let delay = 500ms
+let timeout = 5s
+let ban_duration = 3d
+
+// Массивы и словари
+let langs = ["Link", "Python", "JS"]
+let config = {host: "localhost", port: 8080}
+
+// Функция
+fn greet(who) {
+    return "Hello, {who}! 🔗"
+}
+
+// Условие
+if version >= 1 {
+    print("Stable release")
+} else {
+    print("Dev build")
+}
+
+// Цикл
+for lang in langs {
+    print("Language: {lang}")
+}
+
+// Pipe оператор
+// msg.text |> trim |> lowercase |> print
+
+// Событие (event — гражданин первого класса)
+event user_joined
+
+on user_joined(user) {
+    print("User joined: {user.name}")
+}
+
+// Хук жизненного цикла
+hook on_start {
+    print("Link runtime started!")
+}
