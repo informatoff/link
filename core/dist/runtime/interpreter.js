@@ -2,6 +2,15 @@
 /**
  * Link Language Tree-Walking Interpreter
  * Executes Link AST nodes with full async, event loop, and flow variable support.
+ *
+ * ПАТЧ: добавлена подписка на adapter.onMemberJoin / adapter.onMemberLeave
+ * (если адаптер их поддерживает), которая прокидывает события через
+ * this.eventLoop.emit(...), чтобы on member_joined(...) / on member_left(...)
+ * в .lk-скриптах реально срабатывали. Раньше эти методы адаптера, даже если
+ * реализованы, ни на что не были подписаны в ListenStmt — события никогда
+ * не доходили до eventLoop. Само изменение — два новых блока сразу после
+ * adapter.onMessage(...) и перед await adapter.connect(); внутри case 'ListenStmt'.
+ * Всё остальное в файле оставлено ИДЕНТИЧНЫМ присланному оригиналу.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Interpreter = exports.ContinueControl = exports.BreakControl = exports.ReturnControl = void 0;
@@ -167,6 +176,54 @@ class Interpreter {
                                 handlerEnv.cleanupFlowVars();
                             }
                         });
+                        // ─── ПАТЧ: подписка на события вступления/выхода участника ───────
+                        // Если адаптер поддерживает onMemberJoin/onMemberLeave (см.
+                        // IChannelAdapter), подписываемся и прокидываем событие через
+                        // eventLoop, чтобы on member_joined(...) / on member_left(...)
+                        // в .lk-скриптах реально вызывались.
+                        if (typeof adapter.onMemberJoin === 'function') {
+                            adapter.onMemberJoin(async (ev, ctx) => {
+                                const handlerEnv = new environment_js_1.Environment(env, true);
+                                handlerEnv.declareVar('ctx', (0, value_js_1.jsToLinkValue)(ctx), true, false);
+                                handlerEnv.declareVar('send', (0, value_js_1.makeNativeFn)('send', async (args) => {
+                                    const target = (0, value_js_1.stringifyValue)(args[0] ?? value_js_1.NULL_VAL);
+                                    const msg = (0, value_js_1.stringifyValue)(args[1] ?? value_js_1.NULL_VAL);
+                                    const options = args[2]?.type === 'dict'
+                                        ? runtimeValueToJS(args[2])
+                                        : undefined;
+                                    await adapter.sendMessage(target, msg, options);
+                                    return value_js_1.NULL_VAL;
+                                }), true, false);
+                                try {
+                                    await this.eventLoop.emit('member_joined', [(0, value_js_1.jsToLinkValue)(ev)], handlerEnv);
+                                }
+                                finally {
+                                    handlerEnv.cleanupFlowVars();
+                                }
+                            });
+                        }
+                        if (typeof adapter.onMemberLeave === 'function') {
+                            adapter.onMemberLeave(async (ev, ctx) => {
+                                const handlerEnv = new environment_js_1.Environment(env, true);
+                                handlerEnv.declareVar('ctx', (0, value_js_1.jsToLinkValue)(ctx), true, false);
+                                handlerEnv.declareVar('send', (0, value_js_1.makeNativeFn)('send', async (args) => {
+                                    const target = (0, value_js_1.stringifyValue)(args[0] ?? value_js_1.NULL_VAL);
+                                    const msg = (0, value_js_1.stringifyValue)(args[1] ?? value_js_1.NULL_VAL);
+                                    const options = args[2]?.type === 'dict'
+                                        ? runtimeValueToJS(args[2])
+                                        : undefined;
+                                    await adapter.sendMessage(target, msg, options);
+                                    return value_js_1.NULL_VAL;
+                                }), true, false);
+                                try {
+                                    await this.eventLoop.emit('member_left', [(0, value_js_1.jsToLinkValue)(ev)], handlerEnv);
+                                }
+                                finally {
+                                    handlerEnv.cleanupFlowVars();
+                                }
+                            });
+                        }
+                        // ─── КОНЕЦ ПАТЧА ───────────────────────────────────────────────
                         await adapter.connect();
                         this.hasActiveListeners = true;
                     }
